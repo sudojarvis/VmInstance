@@ -4,10 +4,16 @@ import (
 	"fmt"
 	"os/exec"
 	"regexp"
+
+	"gopkg.in/yaml.v2"
 )
 
 func copyCloudfunctionGen2(functionName string, Location string) {
 
+   
+    
+
+    println("-------------------------------------------")
 
 	command := "gcloud"
     args := []string{"functions", "describe", fmt.Sprintf("%s", functionName), "--region", Location}
@@ -26,6 +32,7 @@ func copyCloudfunctionGen2(functionName string, Location string) {
 
 	sourcePattern := regexp.MustCompile(`source:\s+storageSource:\s+bucket:\s+(?P<bucket>\S+)\s+generation:\s+'(?P<generation>\d+)'\s+object:\s+(?P<object>\S+)`)
     matches := sourcePattern.FindStringSubmatch(string(out))
+
 
 
     if len(matches) > 0 {
@@ -54,7 +61,37 @@ func copyCloudfunctionGen2(functionName string, Location string) {
         return
     }
 
-    // Print the output
     fmt.Println("Output:", string(out))
 
 }
+
+
+func GFunctionDescriptionEnv(functionName string, Location string) (string) {
+
+    command := "gcloud"
+	args := []string{"functions", "describe", functionName, "--region", Location, "--format=yaml"}
+
+	out, err := exec.Command(command, args...).Output()
+	if err != nil {
+		fmt.Println("Error executing command:", err)
+		fmt.Println("Output:", string(out))
+		return ""
+	}
+
+	var functionInfo map[string]interface{}
+	if err := yaml.Unmarshal(out, &functionInfo); err != nil {
+		fmt.Println("Error parsing YAML:", err)
+		return ""
+	}
+
+	environment, ok := functionInfo["environment"].(string)
+	if !ok {
+		fmt.Println("Environment not found in YAML")
+		return ""
+	}
+	fmt.Println("Environment:", environment)
+
+    return environment
+}
+
+

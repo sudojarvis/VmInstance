@@ -39,7 +39,9 @@ func main() {
 	zone := "us-central1-a" // this for compute engine
 	user := "kumar_236" //  this for the compute engine
 
-	functionName := "test-function-1" //hardcoded for now
+	functionName := "test-function-1" //hardcoded for now gen 2 function
+	// functionName := "function-3" // gen 1 function
+	// Location = "us-central1" // gen 1 function
 
 	ctx := context.Background()
 
@@ -64,18 +66,20 @@ func main() {
 
 
 	//take input from user
-	fmt.Println("Enter the Env gen(1/2):")
-	var env string
-	fmt.Scanln (&env)
+	// fmt.Println("Enter the Env gen(1/2):")
+	// var env string
+	// fmt.Scanln (&env)
 	// fmt.Println("Enter the function name:")
 
-	if env == "gen2" {
+	gen_type := GFunctionDescriptionEnv(functionName, Location)
+
+	if gen_type == "GEN_2" {
+
 		copyCloudfunctionGen2(functionName, Location)
 		tranferSourceCode(functionName + ".zip", vmInstance, user, zone)
 
 	} else {
 
-	
 		client, err := functions.NewCloudFunctionsClient(ctx)
 		if err != nil {
 			fmt.Printf("Failed to create client: %v", err)
@@ -83,7 +87,6 @@ func main() {
 		}
 		defer client.Close()
 
-		// function := "projects/cloudsec-390404/locations/us-central1/functions/function-3"
 		function_path := fmt.Sprintf("projects/%s/locations/%s/functions/%s", projectID, Location, functionName)
 
 
