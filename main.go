@@ -67,7 +67,7 @@ func main() {
 	// Create a new instance
 	createInstanceWithFirewall(os.Stdout, projectID, zone, vmInstance, machineType, sourceImage, networkName)
 
-	time.Sleep(30 * time.Second)
+	// time.Sleep(30 * time.Second)
 
 
 
