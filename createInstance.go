@@ -205,7 +205,7 @@ func createInstanceWithFirewall(w io.Writer, projectID, zone, instanceName, mach
 
 
 func generateSSHKeyPair(username string) (privateKey, publicKey []byte, err error) {
-	// Get user's home directory
+
 	usr, err := user.Current()
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get user's home directory: %v", err)
@@ -224,13 +224,12 @@ func generateSSHKeyPair(username string) (privateKey, publicKey []byte, err erro
 		}
 	}
 
-	// Read the generated private key
+	
 	privKey, err := ioutil.ReadFile(privKeyPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to read private key: %v", err)
 	}
 
-	// Read the generated public key
 	pubKey, err := ioutil.ReadFile(pubKeyPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to read public key: %v", err)
@@ -248,7 +247,7 @@ func generateSSHKeyPair(username string) (privateKey, publicKey []byte, err erro
 func addPublicKeytoInstance(w io.Writer, projectID, zone, instanceName, publicKey string, username string) error {
     ctx := context.Background()
 
-    // Create a compute service
+  
     client, err := google.DefaultClient(ctx, computeapi.CloudPlatformScope)
     if err != nil {
         return fmt.Errorf("failed to create compute client: %w", err)
@@ -259,21 +258,21 @@ func addPublicKeytoInstance(w io.Writer, projectID, zone, instanceName, publicKe
         return fmt.Errorf("failed to create compute service: %w", err)
     }
 
-    // Get instance info
+ 
     instanceResource := fmt.Sprintf("projects/%s/zones/%s/instances/%s", projectID, zone, instanceName)
     instanceInfo, err := computeService.Instances.Get(projectID, zone, instanceName).Context(ctx).Do()
     if err != nil {
         return fmt.Errorf("failed to get instance info: %v", err)
     }
 
-    // Print the instance details
+ 
     fmt.Fprintf(w, "Instance details:\n")
     fmt.Fprintf(w, "Name: %s\n", instanceInfo.Name)
     fmt.Fprintf(w, "Machine Type: %s\n", instanceInfo.MachineType)
 
 	publicKey= fmt.Sprintf("%s:%s", username, publicKey)
 
-    // Add public key to metadata
+   
     metadataKey := "ssh-keys"
     metadataItem := &computeapi.MetadataItems{
         Key:   metadataKey,
@@ -282,16 +281,13 @@ func addPublicKeytoInstance(w io.Writer, projectID, zone, instanceName, publicKe
     }
     instanceInfo.Metadata.Items = append(instanceInfo.Metadata.Items, metadataItem)
 
-    // Update the instance with new metadata
+ 
     _, err = computeService.Instances.SetMetadata(projectID, zone, instanceName, instanceInfo.Metadata).Context(ctx).Do()
     if err != nil {
         return fmt.Errorf("failed to update instance metadata: %v", err)
     }
     fmt.Fprintf(w, "Metadata updated\n")
 
-	// Wait for the operation to complete
-	
-	// Get the updated instance info
 	
 
     fmt.Printf("Public key added to instance metadata %s\n", instanceResource)
