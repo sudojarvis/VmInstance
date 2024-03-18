@@ -1,6 +1,0 @@
---2024-03-17 12:48:00--  https://storage.googleapis.com/gcf-v2-sources-291013112755-us-central1/function-2/function-source.zip?GoogleAccessId=service-291013112755@gcf-admin-robot.iam.gserviceaccount.com
-Resolving storage.googleapis.com (storage.googleapis.com)... 142.250.193.27, 142.250.194.251, 142.250.194.27, ...
-Connecting to storage.googleapis.com (storage.googleapis.com)|142.250.193.27|:443... connected.
-HTTP request sent, awaiting response... 403 Forbidden
-2024-03-17 12:48:01 ERROR 403: Forbidden.
-
