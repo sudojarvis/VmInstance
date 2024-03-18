@@ -74,10 +74,10 @@ func createInstanceWithFirewall(w io.Writer, projectID, zone, instanceName, mach
 		return fmt.Errorf("unable to check if firewall rule exists: %w", err)
 	}
 
-        email := "workloadscanserviceaccount@cloudsec-390404.iam.gserviceaccount.com"
-        scope := []string{
-                "https://www.googleapis.com/auth/cloud-platform",
-        }
+    //     email := "workloadscanserviceaccount@cloudsec-390404.iam.gserviceaccount.com"
+    //     scope := []string{
+    //             "https://www.googleapis.com/auth/cloud-platform",
+    //     }
         
 
         if !firewallExists{
@@ -173,13 +173,13 @@ func createInstanceWithFirewall(w io.Writer, projectID, zone, instanceName, mach
                         Tags: &computepb.Tags{
                                 Items: tags,
                         },
-                        ServiceAccounts: []*computepb.ServiceAccount{
-                                {
-                                        Email: proto.String(email),
-                                        Scopes: scope,
-                                },
+                        // ServiceAccounts: []*computepb.ServiceAccount{
+                        //         {
+                        //                 Email: proto.String(email),
+                        //                 Scopes: scope,
+                        //         },
 
-                        },
+                        // },
 
                         
                 },
@@ -244,14 +244,28 @@ func generateSSHKeyPair(username string) (privateKey, publicKey []byte, err erro
 
 
 
-func addPublicKeytoInstance(w io.Writer, projectID, zone, instanceName, publicKey string, username string) error {
+func addPublicKeytoInstance(w io.Writer, projectID, zone, instanceName, publicKey string, username string, path_to_json string) error {
     ctx := context.Background()
 
   
-    client, err := google.DefaultClient(ctx, computeapi.CloudPlatformScope)
-    if err != nil {
-        return fmt.Errorf("failed to create compute client: %w", err)
-    }
+    // client, err := google.DefaultClient(ctx, computeapi.CloudPlatformScope)
+    // if err != nil {
+    //     return fmt.Errorf("failed to create compute client: %w", err)
+    // }
+
+	data, err := ioutil.ReadFile(path_to_json)
+
+	if err != nil {
+		return fmt.Errorf("failed to read service account key file: %w", err)
+	}
+
+	conf, err := google.JWTConfigFromJSON(data, computeapi.CloudPlatformScope)
+
+	if err != nil {
+		return fmt.Errorf("failed to create JWT config: %w", err)
+	}
+	
+	client := conf.Client(ctx)
 
     computeService, err := computeapi.New(client)
     if err != nil {
@@ -271,8 +285,6 @@ func addPublicKeytoInstance(w io.Writer, projectID, zone, instanceName, publicKe
     fmt.Fprintf(w, "Machine Type: %s\n", instanceInfo.MachineType)
 
 	publicKey= fmt.Sprintf("%s:%s", username, publicKey)
-
-   
     metadataKey := "ssh-keys"
     metadataItem := &computeapi.MetadataItems{
         Key:   metadataKey,

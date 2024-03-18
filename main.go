@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
 	"os/exec"
@@ -23,10 +22,6 @@ import (
 	"google.golang.org/api/option"
 )
 
-func randomInstanceName() string {
-	return "instance-" + fmt.Sprint(rand.Intn(1000))
-}
-
 
 
 
@@ -34,16 +29,14 @@ func randomInstanceName() string {
 func main() {
 
 
-
 	projectID := "cloudsec-390404"
-
-	vmInstance := "testvm-2"
-
-	
+	vmInstance := "testvm-3"
 	Location := "us-east4" // this for cloud functions
+
 	// zone := "us-central1-a" // this for compute engine
 	zone := "us-east4-c" // this for compute engine
 	user := "ashish" //  this for the compute engine
+
 
 	// functionName := "test-function-1" //hardcoded for now gen 2 function
 	functionName := "function-2" // gen 1 function
@@ -58,6 +51,7 @@ func main() {
 	sourceImage := "projects/debian-cloud/global/images/family/debian-10"
 	networkName := "global/networks/default"
 
+	path_to_json := "cloudsec-390404-be836ea29934.json"
 
 	privateKey , publicKey, err := generateSSHKeyPair(user)
 	if err != nil {
@@ -73,13 +67,13 @@ func main() {
 	// Create a new instance
 	createInstanceWithFirewall(os.Stdout, projectID, zone, vmInstance, machineType, sourceImage, networkName)
 
-	time.Sleep(60 * time.Second)
+	time.Sleep(30 * time.Second)
 
 
 
 	
 
-	addPublicKeytoInstance(os.Stdout, projectID, zone, vmInstance, string(publicKey), user)
+	addPublicKeytoInstance(os.Stdout, projectID, zone, vmInstance, string(publicKey), user,path_to_json)
 
 	// time.Sleep(30 * time.Second)
 
@@ -87,7 +81,7 @@ func main() {
 	
 	ctx := context.Background()
 
-	service, err := compute.NewService(ctx, option.WithCredentialsFile("cloudsec-390404-be836ea29934.json"))
+	service, err := compute.NewService(ctx, option.WithCredentialsFile(path_to_json))
 	if err != nil {
 		log.Fatalf("Failed to create Compute Engine service: %v", err)
 	}
@@ -129,6 +123,11 @@ func main() {
 	fmt.Println("Cloud Function details:", cloudFunction)
 
 	err = downloadFunction(cloudFunction.DownloadUrl, functionName)
+
+	if err != nil {
+		fmt.Println("Error downloading function:", err)
+		return
+	}
 	
 
 	usr, err := osUser.Current()
