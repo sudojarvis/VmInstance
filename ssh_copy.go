@@ -40,6 +40,12 @@ func downloadAndUnzipFileOnInstance(w io.Writer, downloadURL, destFileName, sshH
 	}
 	defer remoteFile.Close()
 
+	// Create a directory called "scanner" on the remote instance
+	err = sshRunCommand(sshClient, "mkdir -p scanner")
+	if err != nil {
+		return fmt.Errorf("failed to create directory 'scanner': %w", err)
+	}
+
 	// Download the file from the URL and write it to the remote file
 	response, err := http.Get(downloadURL)
 	if err != nil {
@@ -52,6 +58,19 @@ func downloadAndUnzipFileOnInstance(w io.Writer, downloadURL, destFileName, sshH
 	}
 
 	fmt.Fprintf(w, "File downloaded from URL %s and stored as %s on remote instance %s\n", downloadURL, destFileName, sshHost)
+
+	// Install unzip on the remote VM instance
+	err = sshRunCommand(sshClient, "sudo apt-get update && sudo apt-get install -y unzip")
+	if err != nil {
+		return fmt.Errorf("failed to install unzip: %w", err)
+	}
+
+	// Unzip the downloaded file into the "scanner" directory
+	_, err = sshRunCommandWithOutput(sshClient, fmt.Sprintf("sudo unzip -o %s -d scanner/", destFileName))
+	if err != nil {
+		return fmt.Errorf("failed to unzip file: %w", err)
+	}
+	println("File unzipped into scanner directory")
 
 	return nil
 }
@@ -77,4 +96,31 @@ func sshConnect(sshHost, sshUser, privateKeyPath string) (*ssh.Client, error) {
     }
 
     return ssh.Dial("tcp", sshHost+":22", config)
+}
+
+// sshRunCommand runs a command on the remote VM instance.
+func sshRunCommand(client *ssh.Client, command string) error {
+	session, err := client.NewSession()
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	return session.Run(command)
+}
+
+// sshRunCommandWithOutput runs a command on the remote VM instance and returns its output.
+func sshRunCommandWithOutput(client *ssh.Client, command string) (string, error) {
+	session, err := client.NewSession()
+	if err != nil {
+		return "", err
+	}
+	defer session.Close()
+
+	output, err := session.CombinedOutput(command)
+	if err != nil {
+		return "", err
+	}
+
+	return string(output), nil
 }
