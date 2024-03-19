@@ -7,11 +7,11 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"os/user"
 
 	compute "cloud.google.com/go/compute/apiv1"
 	"golang.org/x/oauth2/google"
 	computeapi "google.golang.org/api/compute/v1"
+	"google.golang.org/api/option"
 	computepb "google.golang.org/genproto/googleapis/cloud/compute/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -43,7 +43,7 @@ func firewallRuleExists(ctx context.Context, projectID, firewallName string) (bo
 }
 
 // createInstance sends an instance creation request to the Compute Engine API and waits for it to complete.
-func createInstanceWithFirewall(w io.Writer, projectID, zone, instanceName, machineType, sourceImage, networkName string) error {
+func createInstanceWithFirewall(w io.Writer, projectID, zone, instanceName, machineType, sourceImage, networkName string, path_to_json string, firewallName string) error {
         // projectID := "cloudsec-390404"
 		// zone := "us-east4-c" // Change this to your desired zone
 		// instanceName := "test-vm-inst-5"
@@ -51,27 +51,30 @@ func createInstanceWithFirewall(w io.Writer, projectID, zone, instanceName, mach
         // sourceImage := "projects/cloudsec-390404/global/images/image-1"
         // networkName := "global/networks/default"
 
+        // firewallName := "allow-ssh-ingress-from-iap"
+
 
         tags := []string{"http-server", "https-server"}
 
         ctx := context.Background()
-        instancesClient, err := compute.NewInstancesRESTClient(ctx)
+        instancesClient, err := compute.NewInstancesRESTClient(ctx, option.WithCredentialsFile(path_to_json))
         if err != nil {
                 return fmt.Errorf("NewInstancesRESTClient: %w", err)
         }
         defer instancesClient.Close()
 
         // Create a firewall rule to allow ssh traffic
-        firewallClient, err := compute.NewFirewallsRESTClient(ctx)
+        firewallClient, err := compute.NewFirewallsRESTClient(ctx, option.WithCredentialsFile(path_to_json))
         if err != nil {
         	return fmt.Errorf("NewFirewallsRESTClient: %w", err)
         }
         defer firewallClient.Close()
 
         // Check if the firewall rule already exists
-	firewallExists, err := firewallRuleExists(ctx, projectID, "allow-ssh-ingress-from-iap")
+	firewallExists, err := firewallRuleExists(ctx, projectID, firewallName)
 	if err != nil {
-		return fmt.Errorf("unable to check if firewall rule exists: %w", err)
+		// return fmt.Errorf("unable to check if firewall rule exists: %w", err)
+                fmt.Println("firewall rule does not exist, creating new firewall rule")
 	}
 
     //     email := "workloadscanserviceaccount@cloudsec-390404.iam.gserviceaccount.com"
@@ -85,7 +88,7 @@ func createInstanceWithFirewall(w io.Writer, projectID, zone, instanceName, mach
 		firewallReq := &computepb.InsertFirewallRequest{
 			Project: projectID,
 			FirewallResource: &computepb.Firewall{
-				Name:         proto.String("allow-ssh-ingress-from-iap"),
+				Name:         proto.String(firewallName),
 				Network:      proto.String(networkName),
 				SourceRanges: []string{"0.0.0.0/0"},
 				Allowed: []*computepb.Allowed{
@@ -112,7 +115,7 @@ func createInstanceWithFirewall(w io.Writer, projectID, zone, instanceName, mach
 		}
         } else{
                 // firewallName := "allow-ssh"
-                firewallName := "allow-ssh-ingress-from-iap"
+                // firewallName := "allow-ssh-ingress-from-iap"
                 // If the firewall rule already exists, update it
                 updatedFirewall := &computepb.Firewall{
                         Name:         proto.String(firewallName),
@@ -204,20 +207,21 @@ func createInstanceWithFirewall(w io.Writer, projectID, zone, instanceName, mach
 
 
 
-func generateSSHKeyPair(username string) (privateKey, publicKey []byte, err error) {
+func generateSSHKeyPair(username string, path string) ([]byte, []byte, error) {
 
-	usr, err := user.Current()
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get user's home directory: %v", err)
-	}
-	sshDir := usr.HomeDir + "/.ssh/"
-	privKeyPath := sshDir + "gcp_rsa"
-	pubKeyPath := sshDir + "gcp_rsa.pub"
+	// usr, err := user.Current()
+	// if err != nil {
+	// 	return nil, nil, fmt.Errorf("failed to get user's home directory: %v", err)
+	// }
+	// sshDir := usr.HomeDir + "/.ssh/"
+        
+	// privKeyPath := sshDir + "gcp_rsa"
+	// pubKeyPath := sshDir + "gcp_rsa.pub"
 
 	// Check if the key files exist
-	if _, err := os.Stat(privKeyPath); os.IsNotExist(err) {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
 		// Generate RSA private key
-		cmd := exec.Command("ssh-keygen", "-t", "rsa", "-b", "2048", "-f", privKeyPath, "-N", "", "-C", username)
+		cmd := exec.Command("ssh-keygen", "-t", "rsa", "-b", "2048", "-f", path, "-N", "", "-C", username)
 		err := cmd.Run()
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to generate private key: %v", err)
@@ -225,12 +229,12 @@ func generateSSHKeyPair(username string) (privateKey, publicKey []byte, err erro
 	}
 
 	
-	privKey, err := ioutil.ReadFile(privKeyPath)
+	privKey, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to read private key: %v", err)
 	}
 
-	pubKey, err := ioutil.ReadFile(pubKeyPath)
+	pubKey, err := ioutil.ReadFile(path + ".pub")
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to read public key: %v", err)
 	}
