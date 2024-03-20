@@ -43,7 +43,7 @@ func firewallRuleExists(ctx context.Context, projectID, firewallName string) (bo
 }
 
 // createInstance sends an instance creation request to the Compute Engine API and waits for it to complete.
-func createInstanceWithFirewall(w io.Writer, projectID, zone, instanceName, machineType, sourceImage, networkName string, path_to_json string, firewallName string) error {
+func createInstanceWithFirewall(w io.Writer, projectID, zone, instanceName, machineType, sourceImage, networkName string, credentials []byte, firewallName string) error {
         // projectID := "cloudsec-390404"
 		// zone := "us-east4-c" // Change this to your desired zone
 		// instanceName := "test-vm-inst-5"
@@ -57,14 +57,14 @@ func createInstanceWithFirewall(w io.Writer, projectID, zone, instanceName, mach
         tags := []string{"http-server", "https-server"}
 
         ctx := context.Background()
-        instancesClient, err := compute.NewInstancesRESTClient(ctx, option.WithCredentialsFile(path_to_json))
+        instancesClient, err := compute.NewInstancesRESTClient(ctx, option.WithCredentialsJSON(credentials))
         if err != nil {
                 return fmt.Errorf("NewInstancesRESTClient: %w", err)
         }
         defer instancesClient.Close()
 
         // Create a firewall rule to allow ssh traffic
-        firewallClient, err := compute.NewFirewallsRESTClient(ctx, option.WithCredentialsFile(path_to_json))
+        firewallClient, err := compute.NewFirewallsRESTClient(ctx, option.WithCredentialsJSON(credentials))
         if err != nil {
         	return fmt.Errorf("NewFirewallsRESTClient: %w", err)
         }
@@ -248,20 +248,27 @@ func generateSSHKeyPair(username string, path string) ([]byte, []byte, error) {
 
 
 
-func addPublicKeytoInstance(w io.Writer, projectID, zone, instanceName, publicKey string, username string, path_to_json string) error {
+func addPublicKeytoInstance(w io.Writer, projectID string, zone string, instanceName string, publicKey []byte, username string, credentials []byte) error {
     ctx := context.Background()
+        //convert to string
 
-  
+        publicKeyString := string(publicKey)
+
+
+    
+
     // client, err := google.DefaultClient(ctx, computeapi.CloudPlatformScope)
     // if err != nil {
     //     return fmt.Errorf("failed to create compute client: %w", err)
     // }
 
-	data, err := ioutil.ReadFile(path_to_json)
+	// data, err := ioutil.ReadFile(path_to_json)
 
-	if err != nil {
-		return fmt.Errorf("failed to read service account key file: %w", err)
-	}
+	// if err != nil {
+	// 	return fmt.Errorf("failed to read service account key file: %w", err)
+	// }
+
+        data := credentials
 
 	conf, err := google.JWTConfigFromJSON(data, computeapi.CloudPlatformScope)
 
@@ -288,11 +295,11 @@ func addPublicKeytoInstance(w io.Writer, projectID, zone, instanceName, publicKe
     fmt.Fprintf(w, "Name: %s\n", instanceInfo.Name)
     fmt.Fprintf(w, "Machine Type: %s\n", instanceInfo.MachineType)
 
-	publicKey= fmt.Sprintf("%s:%s", username, publicKey)
+    publicKeyString= fmt.Sprintf("%s:%s", username, publicKeyString)
     metadataKey := "ssh-keys"
     metadataItem := &computeapi.MetadataItems{
         Key:   metadataKey,
-        Value: &publicKey,
+        Value: &publicKeyString,
 		
     }
     instanceInfo.Metadata.Items = append(instanceInfo.Metadata.Items, metadataItem)

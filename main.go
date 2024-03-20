@@ -2,12 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
-	"os/exec"
 	"time"
 
 	// functions "cloud.google.com/go/functions/apiv1"
@@ -16,89 +14,147 @@ import (
 
 	functions "cloud.google.com/go/functions/apiv2"
 	"cloud.google.com/go/functions/apiv2/functionspb"
-	"golang.org/x/crypto/ssh"
+	"github.com/gofiber/fiber"
 	"google.golang.org/api/compute/v1"
 	"google.golang.org/api/option"
 )
 
-// requestBody := map[string]interface{}{
-// 	"projectID": "cloudsec-390404",
-// 	"vmInstance": "testvm-4",
-// 	"Location": "us-east4",
-// 	"zone": "us-east4-c",
-// 	"user": "ashish",
-// 	"path_to_json": "cloudsec-390404-be836ea29934.json",
-// 	"functionName": "function-1",
-// 	"Location": "us-central1",
-// 	"machineType": "n1-standard-1",
-// 	"sourceImage": "projects/debian-cloud/global/images/family/debian-10",
-// 	"networkName": "global/networks/default",
-// 	"fireWallName": "allow-ssh-2",
-// }
+
+
+
+func randomInstanceName() string {
+	rand := time.Now().UnixNano()
+	return fmt.Sprintf("instance-%d", rand)
+}
+
+
+
+
 
 func main() {
 
 
 
-	projectID := "cloudsec-390404"
-	vmInstance := "testvm-10"
-	Location := "us-east4" // this for cloud functions
+	// projectID := "cloudsec-390404"
+	vmInstance :=randomInstanceName()
+	println("Instance name:", vmInstance)
+	// Location := "us-east4" // this for cloud functions
 
-	// zone := "us-central1-a" // this for compute engine
-	zone := "us-east4-c" // this for compute engine
-	user := "ashish" //  this for the compute engine
+	// // zone := "us-central1-a" // this for compute engine
+	// zone := "us-east4-c" // this for compute engine
+	// user := "ashish" //  this for the compute engine
 
-	path_to_json := "cloudsec-390404-736043970d07.json"
+	// path_to_json := "cloudsec-390404-736043970d07.json"
 	// functionName := "test-function-1" //hardcoded for now gen 2 function
-	functionName := "function-1" // gen  function
-	Location = "us-central1" // gen function
+	// functionName := "function-1" // gen  function
+	// Location = "us-central1" // gen function
 
 
 
-
-	// machineType := "n1-standard-1"
-	// sourceImage := "projects/debian-cloud/global/images/family/debian-10"
-	// networkName := "global/networks/default"
+	//haedcoded for values 
+	machineType := "n1-standard-1"
+	sourceImage := "projects/debian-cloud/global/images/family/debian-10"
+	networkName := "global/networks/default"
 	fireWallName := "allow-ssh-2"
-
 	privatePathKey := "gcp_rsa"
 
-		// _ , publicKey, err := generateSSHKeyPair(user ,privatePathKey)
-		// if err != nil {
-		// 	log.Fatalf("Failed to generate SSH key pair: %v", err)
-		// }
+
+
+	app := fiber.New()
+
+
+	app.Post("/test", func(c *fiber.Ctx) {
+		// Get the body of the request
+		body := []byte(c.Body())
+
+		// Parse the body as JSON
+		var requestBody map[string]interface{}
+		err := json.Unmarshal(body, &requestBody)
+		if err != nil {
+			c.Status(400).Send("Invalid request body")
+			return
+		}
+
+		credentials, ok := requestBody["credentials"].(map[string]interface{})
+		if !ok {
+			c.Status(400).Send("Missing or invalid 'credentials' key in request body")
+			return
+		}
+
+		println("Credentials:", credentials)
+
+		credentialsJSON, err := json.Marshal(credentials)
+		if err != nil {
+			c.Status(500).Send("Failed to marshal credentials to JSON")
+			return
+		}
+
+
+		credentialsBytes := credentialsJSON
+	
+		projectID, _ := credentials["project_id"].(string)
+
+		Location, ok := requestBody["Location"].(string)
+		if !ok {
+			c.Status(400).Send("Missing 'Location' key in request body")
+			return
+		}
+	
+		functionName, ok := requestBody["functionName"].(string)
+		if !ok {
+			c.Status(400).Send("Missing 'functionName' key in request body")
+			return
+		}
+
+		user, ok := requestBody["user"].(string)
+		if !ok {
+			c.Status(400).Send("Missing 'user' key in request body")
+			return
+		}
+	
+		zone, ok := requestBody["zone"].(string)
+		if !ok {
+			c.Status(400).Send("Missing 'zone' key in request body")
+			return
+		}
+
+
+		_ , publicKey, err := generateSSHKeyPair(user ,privatePathKey)
+		if err != nil {
+			log.Fatalf("Failed to generate SSH key pair: %v", err)
+			return
+		}
 
 		
-		// err = createInstanceWithFirewall(os.Stdout, projectID, zone, vmInstance, machineType, sourceImage, networkName, path_to_json, fireWallName)
+		err = createInstanceWithFirewall(os.Stdout, projectID, zone, vmInstance, machineType, sourceImage, networkName, credentialsBytes, fireWallName)
 
-		// if err != nil {
+		if err != nil {
 
-		// 	removeSSHKey(privatePathKey)
-		// 	log.Fatalf("Failed to create instance: %v", err)
-		// }
+			removeSSHKey(privatePathKey)
+			log.Fatalf("Failed to create instance: %v", err)
+			return
+		}
 
 
-		
 
-		// err = addPublicKeytoInstance(os.Stdout, projectID, zone, vmInstance, string(publicKey), user,path_to_json)
-
-		// if err != nil {
-		// 	log.Fatalf("Failed to add public key to instance: %v", err)
-		// 	// delete the intance
-		// 	deleteInstance(os.Stdout, projectID, zone, vmInstance, path_to_json)
-		// 	deleteFirewallRule(os.Stdout, projectID, fireWallName, path_to_json)
-		// 	removeSSHKey(privatePathKey)
-		// 	return
-		// }
+		err = addPublicKeytoInstance(os.Stdout, projectID, zone, vmInstance, publicKey, user, credentialsBytes)
+		if err != nil {
+			log.Fatalf("Failed to add public key to instance: %v", err)
+			// delete the intance
+			deleteInstance(os.Stdout, projectID, zone, vmInstance, credentialsBytes)
+			deleteFirewallRule(os.Stdout, projectID, fireWallName, credentialsBytes)
+			removeSSHKey(privatePathKey)
+			return
+		}
 
 
 		ctx := context.Background()
 
-		service, err := compute.NewService(ctx, option.WithCredentialsFile(path_to_json))
+		service, err := compute.NewService(ctx, option.WithCredentialsJSON(credentialsBytes))
 		if err != nil {
 			
-			deleteInstance(os.Stdout, projectID, zone, vmInstance, path_to_json)
-			deleteFirewallRule(os.Stdout, projectID, fireWallName, path_to_json)
+			deleteInstance(os.Stdout, projectID, zone, vmInstance, credentialsBytes)
+			deleteFirewallRule(os.Stdout, projectID, fireWallName, credentialsBytes)
 			removeSSHKey(privatePathKey)
 			log.Fatalf("Failed to create Compute Engine service: %v", err)
 		}
@@ -116,13 +172,13 @@ func main() {
 
 
 
-		client, err := functions.NewFunctionClient(ctx, option.WithCredentialsFile(path_to_json))
+		client, err := functions.NewFunctionClient(ctx, option.WithCredentialsJSON(credentialsBytes))
 		if err != nil {
 			fmt.Printf("Failed to create client: %v", err)
-			deleteInstance(os.Stdout, projectID, zone, vmInstance, path_to_json)
-			deleteFirewallRule(os.Stdout, projectID, fireWallName, path_to_json)
+			deleteInstance(os.Stdout, projectID, zone, vmInstance, credentialsBytes)
+			deleteFirewallRule(os.Stdout, projectID, fireWallName, credentialsBytes)
 			removeSSHKey(privatePathKey)
-			// return
+			return
 		}
 		defer client.Close()
 
@@ -134,64 +190,41 @@ func main() {
 		if err != nil {
 			fmt.Println("Error getting function:", err)
 			// delete the intance
-			deleteInstance(os.Stdout, projectID, zone, vmInstance, path_to_json)
-			deleteFirewallRule(os.Stdout, projectID, fireWallName, path_to_json)
+			deleteInstance(os.Stdout, projectID, zone, vmInstance, credentialsBytes)
+			deleteFirewallRule(os.Stdout, projectID, fireWallName, credentialsBytes)
 			removeSSHKey(privatePathKey)
-			// return
-		}
-
-
-		fmt.Println("Cloud Function details:", cloudFunction)
-		err = downloadFunction(cloudFunction.DownloadUrl, functionName)
-
-
-		if err != nil {
-			deleteInstance(os.Stdout, projectID, zone, vmInstance, path_to_json)
-			deleteFirewallRule(os.Stdout, projectID, fireWallName, path_to_json)
-			removeSSHKey(privatePathKey)
-			
-			fmt.Println("Error downloading function:", err)
-			// return
-		}
-		
-
-		err = copySourceCode(functionName + ".zip", external_ip, user, zone, privatePathKey)
-		if err != nil {
-			fmt.Println("Error copying source code:", err)
-			// deleteInstance(os.Stdout, projectID, zone, vmInstance, path_to_json)
-			// deleteFirewallRule(os.Stdout, projectID, fireWallName, path_to_json)
-			// removeSSHKey(privatePathKey)
 			return
 		}
 
 
-		// os.Remove(functionName + ".zip")
-		// println("Source code copied:", functionName + ".zip")
-		// func downloadAndUnzipFileOnInstance(w io.Writer, downloadURL, destFileName, sshHost, sshUser, privateKeyPath string) error {
-
-
-		// downloadAndUnzipFileOnInstance(os.Stdout, cloudFunction.DownloadUrl, functionName + ".zip", external_ip, user, privatePathKey)
-
-		// time.Sleep(time.Second * 30)
-
-
-		err = tranferSourceCode(functionName, vmInstance, user, zone, privatePathKey, external_ip, cloudFunction.DownloadUrl)
+		time.Sleep(time.Second * 30)
+	
+		err = downloadAndUnzipFileOnInstance(os.Stdout, cloudFunction.DownloadUrl, functionName + ".zip", external_ip, user, privatePathKey)
 
 		if err != nil {
-			fmt.Println("Error transferring source code:", err)
-			deleteInstance(os.Stdout, projectID, zone, vmInstance, path_to_json)
-			deleteFirewallRule(os.Stdout, projectID, fireWallName, path_to_json)
+			fmt.Println("Error downloading and unzipping file:", err)
+			deleteInstance(os.Stdout, projectID, zone, vmInstance, credentialsBytes)
+			deleteFirewallRule(os.Stdout, projectID, fireWallName, credentialsBytes)
 			removeSSHKey(privatePathKey)
-
 			return
 		}
 
-	// })
 
 
-	// app.Listen(":3000")
+		err = runGrypeOnScannerDirectory(external_ip, user, privatePathKey)
+
+		if err != nil {
+			fmt.Println("Error running Grype:", err)
+			deleteInstance(os.Stdout, projectID, zone, vmInstance, credentialsBytes)
+			deleteFirewallRule(os.Stdout, projectID, fireWallName, credentialsBytes)
+			removeSSHKey(privatePathKey)
+			return
+		}
+	})
 
 
+	println("Server running on port 3000 ...")
+	app.Listen(":3000")
 
 }
 
@@ -218,205 +251,10 @@ func getCloudFunction(ctx context.Context, client *functions.FunctionClient, fun
 	if err != nil {
 		return nil, err
 	}
-
 	return cloudFunction, nil
 
 }
 
-
-
-func downloadFunction(downloadURL string, functionName string) error {
-	resp, err := http.Get(downloadURL)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	functionName = functionName + ".zip"
-
-	err = ioutil.WriteFile(functionName, body, 0644)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-
-// func tranferSourceCode(localFilePath, vmInstance string, user string, zone string) error {
-
-// 	cmd := exec.Command("gcloud", "compute", "scp", localFilePath, user+"@"+vmInstance+":~/", "--zone", zone)
-//     _, err := cmd.Output()
-
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	println("Source code transferred to VM instance:", vmInstance)
-// 	return nil
-// }
-
-func copySourceCode(functionName, external_ip, user, zone string, privateKeyPath string) error {
-	
-	scpCmd := fmt.Sprintf("scp -i %s -o StrictHostKeyChecking=no %s %s@%s:~/", privateKeyPath, functionName, user, external_ip)
-    cmd := exec.Command("bash", "-c", scpCmd)
-    if err := cmd.Run(); err != nil {
-        return fmt.Errorf("error copying file to VM instance: %v", err)
-    }
-
-	return nil
-}
-
-
-func tranferSourceCode(functionName, vmInstance, user, zone, privateKeyPath string, external_ip string, downloadURL string) error {
-	// Create Compute Engine service\\\
-	// computeService, err := compute.NewService(context.Background())
-	// if err != nil {
-	// 	return fmt.Errorf("error creating compute service: %v", err)
-	// }
-
-	// Get instance info
-	// instanceInfo, err := computeService.Instances.Get("cloudsec-390404", zone, vmInstance).Do()
-	// if err != nil {
-	// 	return fmt.Errorf("error getting instance info: %v", err)
-	// }
-
-	key, err := ioutil.ReadFile(privateKeyPath)
-	if err != nil {
-		return fmt.Errorf("error reading private key: %v", err)
-	}
-
-	signer, err := ssh.ParsePrivateKey(key)
-	if err != nil {
-		return fmt.Errorf("error parsing private key: %v", err)
-	}
-
-	config := &ssh.ClientConfig{
-		User: user,
-		Auth: []ssh.AuthMethod{
-			ssh.PublicKeys(signer),
-		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout:         30 * time.Second,
-	}
-
-	client, err := ssh.Dial("tcp", external_ip+":22", config)
-	if err != nil {
-		//delete the instance
-		//delete the firewall
-		//delete the ssh key
-		//delete the function
-
-		return fmt.Errorf("error dialing: %v", err)
-	}
-	defer client.Close()
-
-
-	session, err := client.NewSession()
-	if err != nil {
-		return fmt.Errorf("error creating session: %v", err)
-	}
-	defer session.Close()
-
-	// if err := session.Run("curl -o " + functionName + ".zip " + downloadURL); err != nil {
-	// 	return fmt.Errorf("error downloading function: %v", err)
-	// }
-
-	// defer session.Close()
-
-	// if err := session.Run()
-	
-
-	// install unzip
-	session, err = client.NewSession()
-	if err != nil {
-		return fmt.Errorf("error creating session: %v", err)
-	}
-
-	if err := session.Run("sudo apt-get install unzip"); err != nil {
-		return fmt.Errorf("error installing unzip: %v", err)
-	}
-
-	defer session.Close()
-
-	// session, err = client.NewSession()
-	// if err != nil {
-	// 	return fmt.Errorf("error creating session: %v", err)
-	// }
-
-	// if err := session.Run("sudo apt-get install p7zip-full"); err != nil {
-	// 	return fmt.Errorf("error installing 7zip: %v", err)
-	// }
-
-
-	//create directory and install grype
-	session, err = client.NewSession()
-    if err != nil {
-        log.Fatalf("Failed to create session: %v", err)
-    }
-    defer session.Close()
-
-    if err := session.Run("mkdir -p ~/scanner && sudo curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sudo sh -s -- -b /usr/local/bin"); err != nil {
-        log.Fatalf("Error creating directory or installing grype: %v", err)
-    }
-
-	println("Directory created and grype installed")
-
-
-	//unzip the file in the scanner directory
-
-	session, err = client.NewSession()
-	if err != nil {
-		return fmt.Errorf("error creating session: %v", err)
-	}
-
-	defer session.Close()
-
-	println("Unzipping file", functionName + ".zip")
-
-	if err := session.Run("sudo unzip -o " + functionName + ".zip -d ~/scanner"); err != nil {
-		return fmt.Errorf("error unzipping file: %v", err)
-	} 
-	println("File unzipped successfully")
-
-
-	//execute the grype command
-
-	session, err = client.NewSession()
-	if err != nil {
-		return fmt.Errorf("error creating session: %v", err)
-	}
-
-	defer session.Close()
-
-	if err := session.Run("grype -v ~/scanner --output json > output.json"); err != nil {
-		return fmt.Errorf("error executing grype command: %v", err)
-	}
-
-	println("Grype command executed successfully")
-
-	// send the output.json to backend api
-
-	// session, err = client.NewSession()
-	// if err != nil {
-	// 	return fmt.Errorf("error creating session: %v", err)
-	// }
-
-	// if err := session.Run("curl -X POST -H \"Content-Type: application/json\" -d @output.json http://localhost:8080/api/v1/scan"); err != nil {
-
-	// 	return fmt.Errorf("error sending output.json to backend api: %v", err)
-	// }
-	
-    // fmt.Println("Commands executed successfully")
-
-
-	return nil
-
-}
 
 
 func removeSSHKey(name_of_ssh_key string) error {

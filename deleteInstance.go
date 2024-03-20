@@ -11,12 +11,12 @@ import (
 )
 
 // deleteInstance sends a delete request to the Compute Engine API and waits for it to complete.
-func deleteInstance(w io.Writer, projectID, zone, instanceName string, path_to_json string) error {
+func deleteInstance(w io.Writer, projectID, zone, instanceName string, credentials []byte) error {
 	// projectID := "your_project_id"
 	// zone := "europe-central2-b"
 	// instanceName := "your_instance_name"
 	ctx := context.Background()
-	instancesClient, err := compute.NewInstancesRESTClient(ctx, option.WithCredentialsFile(path_to_json))
+	instancesClient, err := compute.NewInstancesRESTClient(ctx, option.WithCredentialsJSON(credentials))
 	if err != nil {
 			return fmt.Errorf("NewInstancesRESTClient: %w", err)
 	}
@@ -45,12 +45,12 @@ func deleteInstance(w io.Writer, projectID, zone, instanceName string, path_to_j
 
 
 // deleteFirewallRule deletes a firewall rule from the project.
-func deleteFirewallRule(w io.Writer, projectID, firewallRuleName string, path_to_json string) error {
+func deleteFirewallRule(w io.Writer, projectID, firewallRuleName string, credentials []byte) error {
 	// projectID := "your_project_id"
 	// firewallRuleName := "europe-central2-b"
 
 	ctx := context.Background()
-	firewallsClient, err := compute.NewFirewallsRESTClient(ctx, option.WithCredentialsFile(path_to_json))
+	firewallsClient, err := compute.NewFirewallsRESTClient(ctx, option.WithCredentialsJSON(credentials))
 	if err != nil {
 			return fmt.Errorf("NewInstancesRESTClient: %w", err)
 	}
