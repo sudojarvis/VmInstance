@@ -196,8 +196,8 @@ func main() {
 			return
 		}
 
-
-		time.Sleep(time.Second * 30)
+		//need to remove this.
+		time.Sleep(time.Second * 30) // need wait for the instance to be ready to accept the ssh connection
 	
 		err = downloadAndUnzipFileOnInstance(os.Stdout, cloudFunction.DownloadUrl, functionName + ".zip", external_ip, user, privatePathKey)
 
@@ -220,6 +220,30 @@ func main() {
 			removeSSHKey(privatePathKey)
 			return
 		}
+
+
+		err = runSemGrepOnScannerDirectory(external_ip, user, privatePathKey)
+
+		if err != nil {
+			fmt.Println("Error running SemGrep:", err)
+			deleteInstance(os.Stdout, projectID, zone, vmInstance, credentialsBytes)
+			deleteFirewallRule(os.Stdout, projectID, fireWallName, credentialsBytes)
+			removeSSHKey(privatePathKey)
+			return
+		}
+
+
+
+
+		// delete the intance
+		// deleteInstance(os.Stdout, projectID, zone, vmInstance, credentialsBytes)
+		// deleteFirewallRule(os.Stdout, projectID, fireWallName, credentialsBytes)
+		// removeSSHKey(privatePathKey)
+		// // return
+		// c.Send("Success")
+
+
+
 	})
 
 
