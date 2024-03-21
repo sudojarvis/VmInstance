@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 
 	compute "cloud.google.com/go/compute/apiv1"
 	"google.golang.org/api/option"
@@ -72,5 +73,15 @@ func deleteFirewallRule(w io.Writer, projectID, firewallRuleName string, credent
 
 	fmt.Fprintf(w, "Firewall rule deleted\n")
 
+	return nil
+}
+
+func removeSSHKey(name_of_ssh_key string) error {
+	
+	os.Remove(name_of_ssh_key)
+	println("SSH key removed:", name_of_ssh_key)
+	os.Remove(name_of_ssh_key + ".pub")
+	println("SSH public key removed:", name_of_ssh_key + ".pub")
+	
 	return nil
 }

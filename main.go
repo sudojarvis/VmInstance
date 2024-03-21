@@ -278,15 +278,3 @@ func getCloudFunction(ctx context.Context, client *functions.FunctionClient, fun
 	return cloudFunction, nil
 
 }
-
-
-
-func removeSSHKey(name_of_ssh_key string) error {
-	
-	os.Remove(name_of_ssh_key)
-	println("SSH key removed:", name_of_ssh_key)
-	os.Remove(name_of_ssh_key + ".pub")
-	println("SSH public key removed:", name_of_ssh_key + ".pub")
-	
-	return nil
-}
