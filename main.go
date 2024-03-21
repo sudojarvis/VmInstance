@@ -267,14 +267,14 @@ func main() {
 
 		if instance != nil {
 			deleteInstance(os.Stdout, projectID, zone, vmInstance, credentialsBytes)
-			println("Instance deleted")
+			// println("Instance deleted")
 		}
 
 		firewall, _ := service.Firewalls.Get(projectID, fireWallName).Do()
 		
 		if firewall != nil {
 			deleteFirewallRule(os.Stdout, projectID, fireWallName, credentialsBytes)
-			println("Firewall rule deleted")
+			// println("Firewall rule deleted")
 		}
 
 
