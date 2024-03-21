@@ -20,6 +20,15 @@ import (
 )
 
 
+var (
+	projectID string
+	Location string
+	// functionName string
+	user string
+	zone string
+	credentialsBytes []byte
+)
+
 
 
 func randomInstanceName() string {
@@ -90,9 +99,9 @@ func main() {
 		}
 
 
-		credentialsBytes := credentialsJSON
+		credentialsBytes = credentialsJSON
 	
-		projectID, _ := credentials["project_id"].(string)
+		projectID = credentials["project_id"].(string)
 
 		Location, ok := requestBody["Location"].(string)
 		if !ok {
@@ -106,13 +115,13 @@ func main() {
 			return
 		}
 
-		user, ok := requestBody["user"].(string)
+		user, ok = requestBody["user"].(string)
 		if !ok {
 			c.Status(400).Send("Missing 'user' key in request body")
 			return
 		}
 	
-		zone, ok := requestBody["zone"].(string)
+		zone, ok = requestBody["zone"].(string)
 		if !ok {
 			c.Status(400).Send("Missing 'zone' key in request body")
 			return
@@ -234,17 +243,50 @@ func main() {
 
 
 
-
-		// delete the intance
-		// deleteInstance(os.Stdout, projectID, zone, vmInstance, credentialsBytes)
-		// deleteFirewallRule(os.Stdout, projectID, fireWallName, credentialsBytes)
-		// removeSSHKey(privatePathKey)
-		// // return
-		// c.Send("Success")
-
-
-
 	})
+
+
+	app.Get("/delete", func(c *fiber.Ctx) {
+
+		println("credentialsBytes:", credentialsBytes)
+		print("projectID:", projectID)
+		print("zone:", zone)
+		print("vmInstance:", vmInstance)
+		print("fireWallName:", fireWallName)
+
+		//
+		ctx := context.Background()
+		
+
+		service, err := compute.NewService(ctx, option.WithCredentialsJSON(credentialsBytes))
+		if err != nil {
+			log.Fatalf("Failed to create Compute Engine service: %v", err)
+		}
+
+		instance, _ := service.Instances.Get(projectID, zone, vmInstance).Do()
+
+		if instance != nil {
+			deleteInstance(os.Stdout, projectID, zone, vmInstance, credentialsBytes)
+			println("Instance deleted")
+		}
+
+		firewall, _ := service.Firewalls.Get(projectID, fireWallName).Do()
+		
+		if firewall != nil {
+			deleteFirewallRule(os.Stdout, projectID, fireWallName, credentialsBytes)
+			println("Firewall rule deleted")
+		}
+
+
+		if _, err := os.Stat(privatePathKey); err == nil {
+			removeSSHKey(privatePathKey)
+
+			println("SSH key removed")
+		}
+
+		c.Send("Instance deleted , firewall rule deleted and SSH key removed")
+	})
+
 
 
 	println("Server running on port 3000 ...")
