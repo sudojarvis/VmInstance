@@ -141,6 +141,8 @@ func main() {
 
 			removeSSHKey(privatePathKey)
 			log.Fatalf("Failed to create instance: %v", err)
+
+			c.Send("Failed to create instance")
 			return
 		}
 
@@ -153,6 +155,7 @@ func main() {
 			deleteInstance(os.Stdout, projectID, zone, vmInstance, credentialsBytes)
 			deleteFirewallRule(os.Stdout, projectID, fireWallName, credentialsBytes)
 			removeSSHKey(privatePathKey)
+			c.Send("Failed to add public key to instance")
 			return
 		}
 
@@ -166,6 +169,8 @@ func main() {
 			deleteFirewallRule(os.Stdout, projectID, fireWallName, credentialsBytes)
 			removeSSHKey(privatePathKey)
 			log.Fatalf("Failed to create Compute Engine service: %v", err)
+			c.Send("Failed to create Compute Engine service")
+			return
 		}
 
 		instance, err := service.Instances.Get(projectID, zone, vmInstance).Do()
@@ -187,6 +192,7 @@ func main() {
 			deleteInstance(os.Stdout, projectID, zone, vmInstance, credentialsBytes)
 			deleteFirewallRule(os.Stdout, projectID, fireWallName, credentialsBytes)
 			removeSSHKey(privatePathKey)
+			c.Send("Failed to create function client")
 			return
 		}
 		defer client.Close()
@@ -202,6 +208,8 @@ func main() {
 			deleteInstance(os.Stdout, projectID, zone, vmInstance, credentialsBytes)
 			deleteFirewallRule(os.Stdout, projectID, fireWallName, credentialsBytes)
 			removeSSHKey(privatePathKey)
+
+			c.Send("Failed to get cloud function")
 			return
 		}
 
@@ -215,6 +223,7 @@ func main() {
 			deleteInstance(os.Stdout, projectID, zone, vmInstance, credentialsBytes)
 			deleteFirewallRule(os.Stdout, projectID, fireWallName, credentialsBytes)
 			removeSSHKey(privatePathKey)
+			c.Send("Failed to download and unzip file on instance")
 			return
 		}
 
@@ -227,6 +236,7 @@ func main() {
 			deleteInstance(os.Stdout, projectID, zone, vmInstance, credentialsBytes)
 			deleteFirewallRule(os.Stdout, projectID, fireWallName, credentialsBytes)
 			removeSSHKey(privatePathKey)
+			c.Send("Failed to run Grype on instance")
 			return
 		}
 
@@ -238,9 +248,11 @@ func main() {
 			deleteInstance(os.Stdout, projectID, zone, vmInstance, credentialsBytes)
 			deleteFirewallRule(os.Stdout, projectID, fireWallName, credentialsBytes)
 			removeSSHKey(privatePathKey)
+			c.Send("Failed to run SemGrep on instance")
 			return
 		}
 
+		c.Send("Scanning completed successfully")
 
 
 	})
@@ -281,7 +293,7 @@ func main() {
 		if _, err := os.Stat(privatePathKey); err == nil {
 			removeSSHKey(privatePathKey)
 
-			println("SSH key removed")
+			// println("SSH key removed")
 		}
 
 		c.Send("Instance deleted , firewall rule deleted and SSH key removed")
