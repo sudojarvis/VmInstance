@@ -248,11 +248,11 @@ func main() {
 
 	app.Get("/delete", func(c *fiber.Ctx) {
 
-		println("credentialsBytes:", credentialsBytes)
-		print("projectID:", projectID)
-		print("zone:", zone)
-		print("vmInstance:", vmInstance)
-		print("fireWallName:", fireWallName)
+		// println("credentialsBytes:", credentialsBytes)
+		// print("projectID:", projectID)
+		// print("zone:", zone)
+		// print("vmInstance:", vmInstance)
+		// print("fireWallName:", fireWallName)
 
 		//
 		ctx := context.Background()
