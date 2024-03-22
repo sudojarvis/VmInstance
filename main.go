@@ -205,7 +205,7 @@ func main() {
 		}
 
 		//need to remove this.
-		// time.Sleep(time.Second * 30) // need wait for the instance to be ready to accept the ssh connection
+		time.Sleep(time.Second * 30) // need wait for the instance to be ready to accept the ssh connection
 	
 		err = downloadAndUnzipFileOnInstance(os.Stdout, cloudFunction.DownloadUrl, functionName + ".zip", external_ip, user, privatePathKey)
 
