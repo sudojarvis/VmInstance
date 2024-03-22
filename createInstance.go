@@ -13,37 +13,37 @@ import (
 	computeapi "google.golang.org/api/compute/v1"
 	"google.golang.org/api/option"
 	computepb "google.golang.org/genproto/googleapis/cloud/compute/v1"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	// "google.golang.org/grpc/codes"
+	// "google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 )
 
 
-func firewallRuleExists(ctx context.Context, projectID, firewallName string) (bool, error) {
-	firewallClient, err := compute.NewFirewallsRESTClient(ctx)
-	if err != nil {
-		return false, fmt.Errorf("NewFirewallsRESTClient: %w", err)
-	}
-	defer firewallClient.Close()
+// func firewallRuleExists(ctx context.Context, projectID, firewallName string) (bool, error) {
+// 	firewallClient, err := compute.NewFirewallsRESTClient(ctx)
+// 	if err != nil {
+// 		return false, fmt.Errorf("NewFirewallsRESTClient: %w", err)
+// 	}
+// 	defer firewallClient.Close()
 
-	req := &computepb.GetFirewallRequest{
-		Project: projectID,
-		Firewall: firewallName,
-	}
+// 	req := &computepb.GetFirewallRequest{
+// 		Project: projectID,
+// 		Firewall: firewallName,
+// 	}
 
-	_, err = firewallClient.Get(ctx, req)
-	if err != nil {
-		if status.Code(err) == codes.NotFound {
-			return false, nil
-		}
-		return false, fmt.Errorf("unable to get firewall rule: %w", err)
-	}
+// 	_, err = firewallClient.Get(ctx, req)
+// 	if err != nil {
+// 		if status.Code(err) == codes.NotFound {
+// 			return false, nil
+// 		}
+// 		return false, fmt.Errorf("unable to get firewall rule: %w", err)
+// 	}
 
-	return true, nil
-}
+// 	return true, nil
+// }
 
 // createInstance sends an instance creation request to the Compute Engine API and waits for it to complete.
-func createInstanceWithFirewall(w io.Writer, projectID, zone, instanceName, machineType, sourceImage, networkName string, credentials []byte, firewallName string) error {
+func createInstance(w io.Writer, projectID, zone, instanceName, machineType, sourceImage, networkName string, credentials []byte) error {
         // projectID := "cloudsec-390404"
 		// zone := "us-east4-c" // Change this to your desired zone
 		// instanceName := "test-vm-inst-5"
@@ -62,87 +62,6 @@ func createInstanceWithFirewall(w io.Writer, projectID, zone, instanceName, mach
                 return fmt.Errorf("NewInstancesRESTClient: %w", err)
         }
         defer instancesClient.Close()
-
-        // Create a firewall rule to allow ssh traffic
-        firewallClient, err := compute.NewFirewallsRESTClient(ctx, option.WithCredentialsJSON(credentials))
-        if err != nil {
-        	return fmt.Errorf("NewFirewallsRESTClient: %w", err)
-        }
-        defer firewallClient.Close()
-
-        // Check if the firewall rule already exists
-	firewallExists, err := firewallRuleExists(ctx, projectID, firewallName)
-	if err != nil {
-		// return fmt.Errorf("unable to check if firewall rule exists: %w", err)
-                fmt.Println("firewall rule does not exist, creating new firewall rule")
-	}
-
-    //     email := "workloadscanserviceaccount@cloudsec-390404.iam.gserviceaccount.com"
-    //     scope := []string{
-    //             "https://www.googleapis.com/auth/cloud-platform",
-    //     }
-        
-
-        if !firewallExists{
-                // Create a firewall rule to allow ssh traffic
-		firewallReq := &computepb.InsertFirewallRequest{
-			Project: projectID,
-			FirewallResource: &computepb.Firewall{
-				Name:         proto.String(firewallName),
-				Network:      proto.String(networkName),
-				SourceRanges: []string{"0.0.0.0/0"},
-				Allowed: []*computepb.Allowed{
-					{
-						IPProtocol: proto.String("tcp"),
-						Ports:      []string{"22"},
-					},
-				},
-
-                                TargetTags: tags,  
-
-
-			},
-                        
-		}
-
-		firewallOp, err := firewallClient.Insert(ctx, firewallReq)
-		if err != nil {
-			return fmt.Errorf("unable to create firewall rule: %w", err)
-		}
-
-		if err = firewallOp.Wait(ctx); err != nil {
-			return fmt.Errorf("unable to wait for the firewall operation: %w", err)
-		}
-        } else{
-                // firewallName := "allow-ssh"
-                // firewallName := "allow-ssh-ingress-from-iap"
-                // If the firewall rule already exists, update it
-                updatedFirewall := &computepb.Firewall{
-                        Name:         proto.String(firewallName),
-                        Network:      proto.String(networkName),
-                        SourceRanges: []string{"0.0.0.0/0"},
-                        Allowed: []*computepb.Allowed{
-                                {
-                                        IPProtocol: proto.String("tcp"),
-                                        Ports:      []string{"22"},
-                                },
-                        },
-                        TargetTags: tags,
-
-                }
-                op, err := firewallClient.Update(ctx, &computepb.UpdateFirewallRequest{
-                        Project: projectID,
-                        Firewall: firewallName,
-                        FirewallResource: updatedFirewall,
-                })
-                if err != nil {
-                        return fmt.Errorf("unable to update firewall rule: %w", err)
-                }
-
-                if err = op.Wait(ctx); err != nil {
-                        return fmt.Errorf("unable to wait for the firewall operation: %w", err)
-                }
-        }
 
         req := &computepb.InsertInstanceRequest{
                 Project: projectID,
@@ -176,14 +95,6 @@ func createInstanceWithFirewall(w io.Writer, projectID, zone, instanceName, mach
                         Tags: &computepb.Tags{
                                 Items: tags,
                         },
-                        // ServiceAccounts: []*computepb.ServiceAccount{
-                        //         {
-                        //                 Email: proto.String(email),
-                        //                 Scopes: scope,
-                        //         },
-
-                        // },
-
                         
                 },
         }

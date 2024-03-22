@@ -64,10 +64,7 @@ func main() {
 	machineType := "n1-standard-1"
 	sourceImage := "projects/debian-cloud/global/images/family/debian-10"
 	networkName := "global/networks/default"
-	fireWallName := "allow-ssh-2"
 	privatePathKey := "gcp_rsa"
-
-
 
 	app := fiber.New()
 
@@ -135,7 +132,7 @@ func main() {
 		}
 
 		
-		err = createInstanceWithFirewall(os.Stdout, projectID, zone, vmInstance, machineType, sourceImage, networkName, credentialsBytes, fireWallName)
+		err = createInstance(os.Stdout, projectID, zone, vmInstance, machineType, sourceImage, networkName, credentialsBytes)
 
 		if err != nil {
 
@@ -151,7 +148,7 @@ func main() {
 		err = addPublicKeytoInstance(os.Stdout, projectID, zone, vmInstance, publicKey, user, credentialsBytes)
 		if err != nil {
 			log.Fatalf("Failed to add public key to instance: %v", err)
-			deleteResources(projectID, zone, vmInstance, credentialsBytes, fireWallName, privatePathKey)
+			deleteResources(projectID, zone, vmInstance, credentialsBytes, privatePathKey)
 			c.Send("Failed to add public key to instance")
 			return
 		}
@@ -162,7 +159,7 @@ func main() {
 		service, err := compute.NewService(ctx, option.WithCredentialsJSON(credentialsBytes))
 		if err != nil {
 			
-			deleteResources(projectID, zone, vmInstance, credentialsBytes, fireWallName, privatePathKey)
+			deleteResources(projectID, zone, vmInstance, credentialsBytes, privatePathKey)
 			log.Fatalf("Failed to create Compute Engine service: %v", err)
 			c.Send("Failed to create Compute Engine service")
 			return
@@ -170,7 +167,7 @@ func main() {
 
 		instance, err := service.Instances.Get(projectID, zone, vmInstance).Do()
 		if err != nil {
-			deleteResources(projectID, zone, vmInstance, credentialsBytes, fireWallName, privatePathKey)
+			deleteResources(projectID, zone, vmInstance, credentialsBytes, privatePathKey)
 			log.Fatalf("Failed to create Compute Engine service: %v", err)
 		}
 
@@ -185,7 +182,7 @@ func main() {
 		client, err := functions.NewFunctionClient(ctx, option.WithCredentialsJSON(credentialsBytes))
 		if err != nil {
 			fmt.Printf("Failed to create client: %v", err)
-			deleteResources(projectID, zone, vmInstance, credentialsBytes, fireWallName, privatePathKey)
+			deleteResources(projectID, zone, vmInstance, credentialsBytes, privatePathKey)
 			c.Send("Failed to create function client")
 			return
 		}
@@ -199,7 +196,7 @@ func main() {
 		if err != nil {
 			fmt.Println("Error getting function:", err)
 			
-			deleteResources(projectID, zone, vmInstance, credentialsBytes, fireWallName, privatePathKey)
+			deleteResources(projectID, zone, vmInstance, credentialsBytes, privatePathKey)
 			c.Send("Failed to get cloud function")
 			return
 		}
@@ -211,7 +208,7 @@ func main() {
 
 		if err != nil {
 			fmt.Println("Error downloading and unzipping file:", err)
-			deleteResources(projectID, zone, vmInstance, credentialsBytes, fireWallName, privatePathKey)
+			deleteResources(projectID, zone, vmInstance, credentialsBytes, privatePathKey)
 			c.Send("Failed to download and unzip file on instance")
 			return
 		}
@@ -222,7 +219,7 @@ func main() {
 
 		if err != nil {
 			fmt.Println("Error running Grype:", err)
-			deleteResources(projectID, zone, vmInstance, credentialsBytes, fireWallName, privatePathKey)
+			deleteResources(projectID, zone, vmInstance, credentialsBytes, privatePathKey)
 			c.Send("Failed to run Grype on instance")
 			return
 		}
@@ -232,14 +229,14 @@ func main() {
 
 		if err != nil {
 			fmt.Println("Error running SemGrep:", err)
-			deleteResources(projectID, zone, vmInstance, credentialsBytes, fireWallName, privatePathKey)
+			deleteResources(projectID, zone, vmInstance, credentialsBytes, privatePathKey)
 			c.Send("Failed to run SemGrep on instance")
 			return
 		}
 
 
 
-		err = deleteResources(projectID, zone, vmInstance, credentialsBytes, fireWallName, privatePathKey)
+		err = deleteResources(projectID, zone, vmInstance, credentialsBytes, privatePathKey)
 		if err != nil {
 			fmt.Println("Error deleting resources:", err)
 			c.Send("Failed to delete resources")
@@ -289,7 +286,7 @@ func getCloudFunction(ctx context.Context, client *functions.FunctionClient, fun
 }
 
 
-func deleteResources(projectID, zone, vmInstance string, credentialsBytes []byte, fireWallName string, privatePathKey string) error {
+func deleteResources(projectID, zone, vmInstance string, credentialsBytes []byte, privatePathKey string) error {
 	
 
 	ctx := context.Background()
@@ -306,14 +303,6 @@ func deleteResources(projectID, zone, vmInstance string, credentialsBytes []byte
 		deleteInstance(os.Stdout, projectID, zone, vmInstance, credentialsBytes)
 		// println("Instance deleted")
 	}
-
-	firewall, _ := service.Firewalls.Get(projectID, fireWallName).Do()
-	
-	if firewall != nil {
-		deleteFirewallRule(os.Stdout, projectID, fireWallName, credentialsBytes)
-		// println("Firewall rule deleted")
-	}
-
 
 	if _, err := os.Stat(privatePathKey); err == nil {
 		removeSSHKey(privatePathKey)
