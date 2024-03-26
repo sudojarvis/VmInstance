@@ -1,4 +1,15 @@
 ## Dependencies
+- gofiber: Web framework for Go
+- googleapis/google-cloud-go: Google Cloud client libraries for Go
+- google.golang.org/api/compute/v1: Google Compute Engine API client library for Go
+- cloud.google.com/go/compute/apiv1: Google Compute Engine API client library for Go.
+- google.golang.org/api/option: Google API client library for Go.
+- google.golang.org/genproto/googleapis/cloud/compute/v1: Protobuf definitions for Google Cloud Compute Engine API.
+- google.golang.org/protobuf/proto: Go support for Protocol Buffers.
+- cloud.google.com/go/functions/apiv2/functionspb: Google Cloud Functions API client library for Go.
+- cloud.google.com/go/functions/apiv2: Google Cloud Functions client library for Go.
+- github.com/pkg/sftp: Go package for SFTP client.
+- golang.org/x/crypto/ssh: Go package for SSH client.
 
 ## Usage
 
@@ -67,3 +78,19 @@ Use the following format for request body:
         "user": "",
         "zone": ""
       }
+
+project_id: Refers to project id in which cloud function belongs to and vm instance is created.
+
+private_key:
+
+client_email:
+
+client_id: 
+
+functionname: Name of the cloud function
+
+Location: Region for the cloud function
+
+zone: Region for the VM instance
+
+user: username for ssh connection to vm
