@@ -53,10 +53,17 @@ Use the following format for request body:
       }
 
 project_id: Refers to project id in which cloud function belongs to and vm instance is created.
+
 private_key:
+
 client_email:
+
 client_id: 
+
 functionname: Name of the cloud function
+
 Location: Region for the cloud function
+
 zone: Region for the VM instance
+
 user: username for ssh connection to vm
