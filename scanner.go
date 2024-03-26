@@ -5,18 +5,19 @@ import (
 	"golang.org/x/crypto/ssh"
 	"github.com/pkg/sftp"
 	"os"
+	"VmInstance/sshFunctions"
 )
 
 
 func runGrypeOnScannerDirectory(sshHost, sshUser, privateKeyPath string) error {
 
-    sshClient, err := sshConnect(sshHost, sshUser, privateKeyPath)
+    sshClient, err := sshFunctions.SshConnect(sshHost, sshUser, privateKeyPath)
 	if err != nil {
 		return fmt.Errorf("sshConnect: %w", err)
 	}
 	defer sshClient.Close()
     //installing the grype
-    _, err = sshRunCommandWithOutput(sshClient, "sudo curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sudo sh -s -- -b /usr/local/bin")
+    _, err = sshFunctions.SshRunCommandWithOutput(sshClient, "sudo curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sudo sh -s -- -b /usr/local/bin")
     if err != nil {
         return fmt.Errorf("failed to install grype: %w", err)
     }
@@ -24,7 +25,7 @@ func runGrypeOnScannerDirectory(sshHost, sshUser, privateKeyPath string) error {
 
     // run grype on the scanner directory
 
-    _, err = sshRunCommandWithOutput(sshClient, "grype -v ~/scanner --output json > grype_output.json")
+    _, err = sshFunctions.SshRunCommandWithOutput(sshClient, "grype -v ~/scanner --output json > grype_output.json")
 	if err != nil {
 		return fmt.Errorf("failed to run grype: %w", err)
 	}
@@ -42,7 +43,7 @@ func runGrypeOnScannerDirectory(sshHost, sshUser, privateKeyPath string) error {
 
 func runSemGrepOnScannerDirectory(sshHost, sshUser, privateKeyPath string) error {
 
-    sshClient, err := sshConnect(sshHost, sshUser, privateKeyPath)
+    sshClient, err := sshFunctions.SshConnect(sshHost, sshUser, privateKeyPath)
 	if err != nil {
 		return fmt.Errorf("sshConnect: %w", err)
 	}
@@ -50,14 +51,14 @@ func runSemGrepOnScannerDirectory(sshHost, sshUser, privateKeyPath string) error
 
 	//installing pip and python3
 
-	_, err = sshRunCommandWithOutput(sshClient, "sudo apt-get update && sudo apt-get install -y python3-pip")
+	_, err = sshFunctions.SshRunCommandWithOutput(sshClient, "sudo apt-get update && sudo apt-get install -y python3-pip")
 	if err != nil {
 		return fmt.Errorf("failed to install pip and python3: %w", err)
 	}
 
 
     //installing the semgrep
-    _, err = sshRunCommandWithOutput(sshClient, "sudo python3 -m pip install semgrep")
+    _, err = sshFunctions.SshRunCommandWithOutput(sshClient, "sudo python3 -m pip install semgrep")
     if err != nil {
         return fmt.Errorf("failed to install semgrep: %w", err)
 	}
@@ -65,7 +66,7 @@ func runSemGrepOnScannerDirectory(sshHost, sshUser, privateKeyPath string) error
 	println("Semgrep installed successfully")
 
 	// run semgrep on the scanner directory
-	_, err = sshRunCommandWithOutput(sshClient, "sudo semgrep scan ~/scanner --json > semgrep_output.json")
+	_, err = sshFunctions.SshRunCommandWithOutput(sshClient, "sudo semgrep scan ~/scanner --json > semgrep_output.json")
 	if err != nil {
 		return fmt.Errorf("failed to run semgrep: %w", err)
 	}

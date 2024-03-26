@@ -5,11 +5,40 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"log"
 
+	computeapi "google.golang.org/api/compute/v1"
 	compute "cloud.google.com/go/compute/apiv1"
 	"google.golang.org/api/option"
 	computepb "google.golang.org/genproto/googleapis/cloud/compute/v1"
 )
+
+
+func deleteResources(projectID, zone, vmInstance string, credentialsBytes []byte, privatePathKey string) error {
+	
+
+	ctx := context.Background()
+
+
+	service, err := computeapi.NewService(ctx, option.WithCredentialsJSON(credentialsBytes))
+	if err != nil {
+		log.Fatalf("Failed to create Compute Engine service: %v", err)
+	}
+
+	instance, _ := service.Instances.Get(projectID, zone, vmInstance).Do()
+
+	if instance != nil {
+		deleteInstance(os.Stdout, projectID, zone, vmInstance, credentialsBytes)
+		// println("Instance deleted")
+	}
+
+	if _, err := os.Stat(privatePathKey); err == nil {
+		removeSSHKey(privatePathKey)
+	}
+
+	return nil
+	
+}
 
 // deleteInstance sends a delete request to the Compute Engine API and waits for it to complete.
 func deleteInstance(w io.Writer, projectID, zone, instanceName string, credentials []byte) error {

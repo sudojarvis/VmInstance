@@ -7,15 +7,17 @@ import (
 	"log"
 	"os"
 	"time"
+	"VmInstance/sshFunctions"
+	"VmInstance/cf"
 
 	// functions "cloud.google.com/go/functions/apiv1"
 
 	// "cloud.google.com/go/functions/apiv1/functionspb"
 
 	functions "cloud.google.com/go/functions/apiv2"
-	"cloud.google.com/go/functions/apiv2/functionspb"
+	
 	"github.com/gofiber/fiber"
-	"google.golang.org/api/compute/v1"
+	compute "google.golang.org/api/compute/v1"
 	"google.golang.org/api/option"
 )
 
@@ -192,7 +194,7 @@ func main() {
 		function_path := fmt.Sprintf("projects/%s/locations/%s/functions/%s", projectID, Location, functionName)
 
 
-		cloudFunction, err := getCloudFunction(ctx, client, function_path)
+		cloudFunction, err := cf.GetCloudFunction(ctx, client, function_path)
 		if err != nil {
 			fmt.Println("Error getting function:", err)
 			
@@ -204,7 +206,7 @@ func main() {
 		//need to remove this.
 		time.Sleep(time.Second * 30) // need wait for the instance to be ready to accept the ssh connection
 	
-		err = downloadAndUnzipFileOnInstance(os.Stdout, cloudFunction.DownloadUrl, functionName + ".zip", external_ip, user, privatePathKey)
+		err = sshFunctions.DownloadAndUnzipFileOnInstance(os.Stdout, cloudFunction.DownloadUrl, functionName + ".zip", external_ip, user, privatePathKey)
 
 		if err != nil {
 			fmt.Println("Error downloading and unzipping file:", err)
@@ -256,61 +258,4 @@ func main() {
 	}
 	println("Server running on port 3000 ...")
 
-}
-
-
-
-
-
-func getCloudFunction(ctx context.Context, client *functions.FunctionClient, functionpath string) (*functionspb.GenerateDownloadUrlResponse, error) {
-
-	req := &functionspb.GetFunctionRequest{
-		Name: functionpath,
-	}
-
-	downloadReq := &functionspb.GenerateDownloadUrlRequest{
-		Name: req.Name,
-	}
-
-	
-	info, err := client.GetFunction(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	fmt.Println("Cloud Function details:", info)
-
-	cloudFunction, err := client.GenerateDownloadUrl(ctx, downloadReq)
-	if err != nil {
-		return nil, err
-	}
-	return cloudFunction, nil
-
-}
-
-
-func deleteResources(projectID, zone, vmInstance string, credentialsBytes []byte, privatePathKey string) error {
-	
-
-	ctx := context.Background()
-
-
-	service, err := compute.NewService(ctx, option.WithCredentialsJSON(credentialsBytes))
-	if err != nil {
-		log.Fatalf("Failed to create Compute Engine service: %v", err)
-	}
-
-	instance, _ := service.Instances.Get(projectID, zone, vmInstance).Do()
-
-	if instance != nil {
-		deleteInstance(os.Stdout, projectID, zone, vmInstance, credentialsBytes)
-		// println("Instance deleted")
-	}
-
-	if _, err := os.Stat(privatePathKey); err == nil {
-		removeSSHKey(privatePathKey)
-	}
-
-	return nil
-	
 }

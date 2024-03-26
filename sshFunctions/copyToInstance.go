@@ -1,4 +1,4 @@
-package main
+package sshFunctions
 
 import (
 	"fmt"
@@ -9,9 +9,9 @@ import (
 )
 
 // downloadAndUnzipFileOnInstance downloads an object to a file on a remote VM instance, and then unzips it.
-func downloadAndUnzipFileOnInstance(w io.Writer, downloadURL, destFileName, sshHost, sshUser, privateKeyPath string) error {
+func DownloadAndUnzipFileOnInstance(w io.Writer, downloadURL, destFileName, sshHost, sshUser, privateKeyPath string) error {
 	// Connect to the VM instance via SSH
-	sshClient, err := sshConnect(sshHost, sshUser, privateKeyPath)
+	sshClient, err := SshConnect(sshHost, sshUser, privateKeyPath)
 	if err != nil {
 		return fmt.Errorf("sshConnect: %w", err)
 	}
@@ -32,7 +32,7 @@ func downloadAndUnzipFileOnInstance(w io.Writer, downloadURL, destFileName, sshH
 	defer remoteFile.Close()
 
 	// Create a directory called "scanner" on the remote instance
-	err = sshRunCommand(sshClient, "mkdir -p scanner")
+	err = SshRunCommand(sshClient, "mkdir -p scanner")
 	if err != nil {
 		return fmt.Errorf("failed to create directory 'scanner': %w", err)
 	}
@@ -51,13 +51,13 @@ func downloadAndUnzipFileOnInstance(w io.Writer, downloadURL, destFileName, sshH
 	fmt.Fprintf(w, "File downloaded from URL %s and stored as %s on remote instance %s\n", downloadURL, destFileName, sshHost)
 
 	// Install unzip on the remote VM instance
-	err = sshRunCommand(sshClient, "sudo apt-get update && sudo apt-get install -y unzip")
+	err = SshRunCommand(sshClient, "sudo apt-get update && sudo apt-get install -y unzip")
 	if err != nil {
 		return fmt.Errorf("failed to install unzip: %w", err)
 	}
 
 	// Unzip the downloaded file into the "scanner" directory
-	_, err = sshRunCommandWithOutput(sshClient, fmt.Sprintf("sudo unzip -o %s -d scanner/", destFileName))
+	_, err = SshRunCommandWithOutput(sshClient, fmt.Sprintf("sudo unzip -o %s -d scanner/", destFileName))
 	if err != nil {
 		return fmt.Errorf("failed to unzip file: %w", err)
 	}

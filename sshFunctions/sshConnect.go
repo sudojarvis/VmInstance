@@ -1,4 +1,4 @@
-package main
+package sshFunctions
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 )
 
 // sshConnect establishes an SSH connection to the specified host with the provided private key.
-func sshConnect(sshHost, sshUser, privateKeyPath string) (*ssh.Client, error) {
+func SshConnect(sshHost, sshUser, privateKeyPath string) (*ssh.Client, error) {
     privateKey, err := ioutil.ReadFile(privateKeyPath)
     if err != nil {
         return nil, fmt.Errorf("failed to read private key: %v", err)
@@ -31,7 +31,7 @@ func sshConnect(sshHost, sshUser, privateKeyPath string) (*ssh.Client, error) {
 }
 
 // sshRunCommand runs a command on the remote VM instance.
-func sshRunCommand(client *ssh.Client, command string) error {
+func SshRunCommand(client *ssh.Client, command string) error {
 	session, err := client.NewSession()
 	if err != nil {
 		return err
@@ -42,7 +42,7 @@ func sshRunCommand(client *ssh.Client, command string) error {
 }
 
 // sshRunCommandWithOutput runs a command on the remote VM instance and returns its output.
-func sshRunCommandWithOutput(client *ssh.Client, command string) (string, error) {
+func SshRunCommandWithOutput(client *ssh.Client, command string) (string, error) {
 	session, err := client.NewSession()
 	if err != nil {
 		return "", err
