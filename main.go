@@ -1,22 +1,22 @@
 package main
 
 import (
+	"VmInstance/cf"
+	"VmInstance/sshFunctions"
 	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"time"
-	"VmInstance/sshFunctions"
-	"VmInstance/cf"
 
 	// functions "cloud.google.com/go/functions/apiv1"
 
 	// "cloud.google.com/go/functions/apiv1/functionspb"
 
 	functions "cloud.google.com/go/functions/apiv2"
-	
-	"github.com/gofiber/fiber"
+
+	"github.com/gofiber/fiber/v2"
 	compute "google.golang.org/api/compute/v1"
 	"google.golang.org/api/option"
 )
@@ -70,8 +70,7 @@ func main() {
 
 	app := fiber.New()
 
-
-	app.Post("/test", func(c *fiber.Ctx) {
+	app.Post("/test", func(c *fiber.Ctx) error {
 		// Get the body of the request
 		body := []byte(c.Body())
 
@@ -79,92 +78,72 @@ func main() {
 		var requestBody map[string]interface{}
 		err := json.Unmarshal(body, &requestBody)
 		if err != nil {
-			c.Status(400).Send("Invalid request body")
-			return
+			return c.Status(400).Send([]byte("Invalid request body"))
 		}
 
 		credentials, ok := requestBody["credentials"].(map[string]interface{})
 		if !ok {
-			c.Status(400).Send("Missing or invalid 'credentials' key in request body")
-			return
+			return c.Status(400).Send([]byte("Missing or invalid 'credentials' key in request body"))
 		}
 
 		println("Credentials:", credentials)
 
 		credentialsJSON, err := json.Marshal(credentials)
 		if err != nil {
-			c.Status(500).Send("Failed to marshal credentials to JSON")
-			return
+			return c.Status(500).Send([]byte("Failed to marshal credentials to JSON"))
 		}
 
-
 		credentialsBytes = credentialsJSON
-	
+
 		projectID = credentials["project_id"].(string)
 
 		Location, ok := requestBody["Location"].(string)
 		if !ok {
-			c.Status(400).Send("Missing 'Location' key in request body")
-			return
+			return c.Status(400).Send([]byte("Missing 'Location' key in request body"))
 		}
-	
+
 		functionName, ok := requestBody["functionName"].(string)
 		if !ok {
-			c.Status(400).Send("Missing 'functionName' key in request body")
-			return
+			return c.Status(400).Send([]byte("Missing 'functionName' key in request body"))
 		}
 
 		user, ok = requestBody["user"].(string)
 		if !ok {
-			c.Status(400).Send("Missing 'user' key in request body")
-			return
+			return c.Status(400).Send([]byte("Missing 'user' key in request body"))
 		}
-	
+
 		zone, ok = requestBody["zone"].(string)
 		if !ok {
-			c.Status(400).Send("Missing 'zone' key in request body")
-			return
+			return c.Status(400).Send([]byte("Missing 'zone' key in request body"))
 		}
 
-
-		_ , publicKey, err := generateSSHKeyPair(user ,privatePathKey)
+		_, publicKey, err := generateSSHKeyPair(user, privatePathKey)
 		if err != nil {
 			log.Fatalf("Failed to generate SSH key pair: %v", err)
-			return
+			return err
 		}
 
-		
 		err = createInstance(os.Stdout, projectID, zone, vmInstance, machineType, sourceImage, networkName, credentialsBytes)
-
 		if err != nil {
-
 			removeSSHKey(privatePathKey)
 			log.Fatalf("Failed to create instance: %v", err)
-
-			c.Send("Failed to create instance")
-			return
+			return c.Send([]byte("Failed to create instance"))
 		}
-
-
 
 		err = addPublicKeytoInstance(os.Stdout, projectID, zone, vmInstance, publicKey, user, credentialsBytes)
 		if err != nil {
 			log.Fatalf("Failed to add public key to instance: %v", err)
 			deleteResources(projectID, zone, vmInstance, credentialsBytes, privatePathKey)
-			c.Send("Failed to add public key to instance")
-			return
+			return c.Send([]byte("Failed to add public key to instance"))
 		}
-
 
 		ctx := context.Background()
 
 		service, err := compute.NewService(ctx, option.WithCredentialsJSON(credentialsBytes))
 		if err != nil {
-			
 			deleteResources(projectID, zone, vmInstance, credentialsBytes, privatePathKey)
 			log.Fatalf("Failed to create Compute Engine service: %v", err)
-			c.Send("Failed to create Compute Engine service")
-			return
+			return c.Send([]byte("Failed to create Compute Engine service"))
 		}
 
 		instance, err := service.Instances.Get(projectID, zone, vmInstance).Do()
@@ -179,78 +158,57 @@ func main() {
 
 		println("External IP:", external_ip)
 
-
-
 		client, err := functions.NewFunctionClient(ctx, option.WithCredentialsJSON(credentialsBytes))
 		if err != nil {
 			fmt.Printf("Failed to create client: %v", err)
 			deleteResources(projectID, zone, vmInstance, credentialsBytes, privatePathKey)
-			c.Send("Failed to create function client")
-			return
+			return c.Send([]byte("Failed to create function client"))
 		}
 		defer client.Close()
 
-
 		function_path := fmt.Sprintf("projects/%s/locations/%s/functions/%s", projectID, Location, functionName)
-
 
 		cloudFunction, err := cf.GetCloudFunction(ctx, client, function_path)
 		if err != nil {
 			fmt.Println("Error getting function:", err)
-			
 			deleteResources(projectID, zone, vmInstance, credentialsBytes, privatePathKey)
-			c.Send("Failed to get cloud function")
-			return
+			return c.Send([]byte("Failed to get cloud function"))
 		}
 
 		//need to remove this.
 		time.Sleep(time.Second * 30) // need wait for the instance to be ready to accept the ssh connection
-	
-		err = sshFunctions.DownloadAndUnzipFileOnInstance(os.Stdout, cloudFunction.DownloadUrl, functionName + ".zip", external_ip, user, privatePathKey)
 
+		err = sshFunctions.DownloadAndUnzipFileOnInstance(os.Stdout, cloudFunction.DownloadUrl, functionName+".zip", external_ip, user, privatePathKey)
 		if err != nil {
 			fmt.Println("Error downloading and unzipping file:", err)
 			deleteResources(projectID, zone, vmInstance, credentialsBytes, privatePathKey)
-			c.Send("Failed to download and unzip file on instance")
-			return
+			return c.Send([]byte("Failed to download and unzip file on instance"))
 		}
 
-
-
 		err = runGrypeOnScannerDirectory(external_ip, user, privatePathKey)
-
 		if err != nil {
 			fmt.Println("Error running Grype:", err)
 			deleteResources(projectID, zone, vmInstance, credentialsBytes, privatePathKey)
-			c.Send("Failed to run Grype on instance")
-			return
+			return c.Send([]byte("Failed to run Grype on instance"))
 		}
 
-
 		err = runSemGrepOnScannerDirectory(external_ip, user, privatePathKey)
-
 		if err != nil {
 			fmt.Println("Error running SemGrep:", err)
 			deleteResources(projectID, zone, vmInstance, credentialsBytes, privatePathKey)
-			c.Send("Failed to run SemGrep on instance")
-			return
+			return c.Send([]byte("Failed to run SemGrep on instance"))
 		}
-
-
 
 		err = deleteResources(projectID, zone, vmInstance, credentialsBytes, privatePathKey)
 		if err != nil {
 			fmt.Println("Error deleting resources:", err)
-			c.Send("Failed to delete resources")
-			return
+			return c.Send([]byte("Failed to delete resources"))
 		}
 
 		println("Scanning completed successfully and resources deleted")
 
-		c.Send("Scanning completed successfully and resources deleted")
-
+		return c.Send([]byte("Scanning completed successfully and resources deleted"))
 	})
-
 
 	err := app.Listen(":3000")
 	if err != nil {
