@@ -250,8 +250,11 @@ func main() {
 	})
 
 
+	err := app.Listen(":3000")
+	if err != nil {
+		log.Fatalf("Failed to start HTTP server: %v", err)
+	}
 	println("Server running on port 3000 ...")
-	app.Listen(":3000")
 
 }
 

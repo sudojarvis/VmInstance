@@ -43,39 +43,6 @@ func deleteInstance(w io.Writer, projectID, zone, instanceName string, credentia
 	return nil
 }
 
-
-
-// deleteFirewallRule deletes a firewall rule from the project.
-func deleteFirewallRule(w io.Writer, projectID, firewallRuleName string, credentials []byte) error {
-	// projectID := "your_project_id"
-	// firewallRuleName := "europe-central2-b"
-
-	ctx := context.Background()
-	firewallsClient, err := compute.NewFirewallsRESTClient(ctx, option.WithCredentialsJSON(credentials))
-	if err != nil {
-			return fmt.Errorf("NewInstancesRESTClient: %w", err)
-	}
-	defer firewallsClient.Close()
-
-	req := &computepb.DeleteFirewallRequest{
-			Project:  projectID,
-			Firewall: firewallRuleName,
-	}
-
-	op, err := firewallsClient.Delete(ctx, req)
-	if err != nil {
-			return fmt.Errorf("unable to delete firewall rule: %w", err)
-	}
-
-	if err = op.Wait(ctx); err != nil {
-			return fmt.Errorf("unable to wait for the operation: %w", err)
-	}
-
-	fmt.Fprintf(w, "Firewall rule deleted\n")
-
-	return nil
-}
-
 func removeSSHKey(name_of_ssh_key string) error {
 	
 	os.Remove(name_of_ssh_key)
