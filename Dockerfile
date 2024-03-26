@@ -10,20 +10,15 @@ WORKDIR /app
 COPY . .
 
 
-# Ensure all dependencies are synchronized
-RUN go mod tidy
+# Download all dependencies. Dependencies will be cached if the go.mod and go.sum files are not changed
+RUN go mod download
 
 
-# Download the missing dependency
 RUN go mod download google.golang.org/genproto/googleapis/bytestream
-
-
 
 
 # Build the Go app
 RUN go build -mod=mod -o /app/main .
-
-
 
 
 # Expose port 8080 to the outside world
