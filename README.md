@@ -1,4 +1,5 @@
 ## Dependencies
+
 - gofiber: Web framework for Go
 - googleapis/google-cloud-go: Google Cloud client libraries for Go
 - google.golang.org/api/compute/v1: Google Compute Engine API client library for Go
@@ -51,11 +52,11 @@
 
 This will contain credentials including details of Service Account, SSH Key and Cloud Function being scanned.
 
-Credentials: Service Account credential key for authenticating with cloud compute and cloud functions.
-Location: The location of the cloud function.
-functionName: The name of the cloud function.
-user: The user is username of the compute instance.
-zone: The zone of the compute instance.
+- Credentials: Service Account credential key for authenticating with cloud compute and cloud functions.
+- Location: The location of the cloud function.
+- functionName: The name of the cloud function.
+- user: The user is username of the compute instance for ssh connection.
+- zone: The zone of the compute instance.
 
 Use the following format for request body:
 
@@ -85,12 +86,4 @@ private_key:
 
 client_email:
 
-client_id: 
-
-functionname: Name of the cloud function
-
-Location: Region for the cloud function
-
-zone: Region for the VM instance
-
-user: username for ssh connection to vm
+client_id:
