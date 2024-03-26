@@ -53,9 +53,13 @@
 This will contain credentials including details of Service Account, SSH Key and Cloud Function being scanned.
 
 - Credentials: Service Account credential key for authenticating with cloud compute and cloud functions.
+  
 - Location: The location of the cloud function.
+  
 - functionName: The name of the cloud function.
+  
 - user: The user is username of the compute instance for ssh connection.
+  
 - zone: The zone of the compute instance.
 
 Use the following format for request body:
@@ -80,10 +84,3 @@ Use the following format for request body:
         "zone": ""
       }
 
-project_id: Refers to project id in which cloud function belongs to and vm instance is created.
-
-private_key:
-
-client_email:
-
-client_id:
