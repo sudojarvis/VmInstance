@@ -4,6 +4,7 @@ https://cloud.google.com/sdk/docs/install
 - gofiber: Web framework for Go
 - googleapis/google-cloud-go: Google Cloud client libraries for Go
 - google.golang.org/api/compute/v1: Google Compute Engine API client library for Go
+- cloud.google.com/go/compute/apiv1: Google Compute Engine API client library for Go.
 - google.golang.org/api/option: Google API client library for Go.
 - google.golang.org/genproto/googleapis/cloud/compute/v1: Protobuf definitions for Google Cloud Compute Engine API.
 - google.golang.org/protobuf/proto: Go support for Protocol Buffers.
