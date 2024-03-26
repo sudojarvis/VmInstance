@@ -1,8 +1,8 @@
 https://cloud.google.com/sdk/docs/install
 
-# Dependencies
+## Dependencies
 
-# Usage
+## Usage
 
 1. Set up Google Cloud Credentials
    - Create a service account key with the necessary permissions for accessing GCP resources. 
